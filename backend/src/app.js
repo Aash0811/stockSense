@@ -16,9 +16,13 @@ const productRoutes = require("./modules/products/product.routes");
 const warehouseRoutes = require("./modules/warehouses/warehouse.routes");
 const locationRoutes = require("./modules/locations/location.routes");
 const inventoryRoutes = require("./modules/inventory/inventory.routes");
-const purchasingRoutes = require("./modules/purchasing/purchasing.routes");
+const purchasingRoutes = require("./modules/purchasing/purchaseOrder.routes");
 const deliveryRoutes = require("./modules/deliveries/delivery.routes");
-const receivingRoutes = require("./modules/receiving/receiving.routes");
+const receivingRoutes = require("./modules/receiving/receipt.routes");
+const transferRoutes = require("./modules/transfers/transfer.routes");
+const adjustmentRoutes = require("./modules/adjustments/adjustment.routes");
+const reportRoutes = require("./modules/reports/report.routes");
+const auditRoutes = require("./modules/audit/audit.routes");
 // ============================================================
 // GLOBAL MIDDLEWARE
 // ============================================================
@@ -72,6 +76,10 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/purchase-orders",purchasingRoutes);
 app.use("/api/receipts",receivingRoutes);
 app.use("/api/deliveries", deliveryRoutes);
+app.use("/api/transfers", transferRoutes);
+app.use("/api/adjustments", adjustmentRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/audit", auditRoutes);
 
 // ============================================================
 // ERROR HANDLING

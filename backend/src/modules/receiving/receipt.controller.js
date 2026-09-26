@@ -6,7 +6,7 @@ const service = require("./receipt.service");
 const {
   createReceiptSchema,
   receiptIdSchema,
-} = require("./receiving.validation");
+} = require("./receipt.validation");
 
 const createReceipt = asyncHandler(
   async (req, res) => {

@@ -1,4 +1,4 @@
-const { prisma } = require("../../database/prisma");
+const prisma = require("../../database/prisma");
 
 const {
   MOVEMENT_TYPES,
@@ -163,6 +163,7 @@ async function applyStockMovement(tx, data) {
     reason = null,
     idempotencyKey = null,
     createdById,
+    direction = "INCREASE",
   } = data;
 
   if (!Number.isFinite(quantity) || quantity <= 0) {
@@ -215,11 +216,15 @@ async function applyStockMovement(tx, data) {
   let newOnHand = Number(inventory.onHand);
   let newInTransit = Number(inventory.inTransit);
 
-  if (POSITIVE_MOVEMENT_TYPES.has(type)) {
+  const isNegativeAdjustment =
+    type === MOVEMENT_TYPES.ADJUSTMENT && direction === "DECREASE";
+
+  if (POSITIVE_MOVEMENT_TYPES.has(type) ||
+      (type === MOVEMENT_TYPES.ADJUSTMENT && !isNegativeAdjustment)) {
     newOnHand += quantity;
   }
 
-  if (NEGATIVE_MOVEMENT_TYPES.has(type)) {
+  if (NEGATIVE_MOVEMENT_TYPES.has(type) || isNegativeAdjustment) {
     const available = calculateAvailable(inventory);
 
     if (quantity > available) {

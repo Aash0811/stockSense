@@ -87,6 +87,7 @@ model User {
 
   stockMovements StockMovement[]
   createdPOs     PurchaseOrder[] @relation("PurchaseOrderCreator")
+  stockAdjustments StockAdjustment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -174,6 +175,7 @@ model ProductVariant {
   deliveryItems  DeliveryItem[]
   transferItems  TransferItem[]
   reservations   Reservation[]
+  stockAdjustments StockAdjustment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -228,6 +230,10 @@ model Location {
   parentId String?
   parent   Location?  @relation("LocationHierarchy", fields: [parentId], references: [id])
   children Location[] @relation("LocationHierarchy")
+  deliveryItems DeliveryItem[]
+  sourceTransferItems TransferItem[] @relation("SourceTransferLocation")
+  destinationTransferItems TransferItem[] @relation("DestinationTransferLocation")
+  stockAdjustments StockAdjustment[]
 
   name String
   code String
@@ -496,6 +502,9 @@ model DeliveryItem {
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id])
 
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+
   orderedQuantity   Int
   deliveredQuantity Int @default(0)
 
@@ -503,6 +512,7 @@ model DeliveryItem {
 
   @@index([deliveryId])
   @@index([variantId])
+  @@index([locationId])
 }
 
 // ============================================================
@@ -545,6 +555,12 @@ model TransferItem {
   variantId String
   variant   ProductVariant @relation(fields: [variantId], references: [id])
 
+  sourceLocationId String
+  sourceLocation   Location @relation("SourceTransferLocation", fields: [sourceLocationId], references: [id])
+
+  destinationLocationId String
+  destinationLocation   Location @relation("DestinationTransferLocation", fields: [destinationLocationId], references: [id])
+
   quantity         Int
   receivedQuantity Int @default(0)
 
@@ -552,6 +568,8 @@ model TransferItem {
 
   @@index([transferId])
   @@index([variantId])
+  @@index([sourceLocationId])
+  @@index([destinationLocationId])
 }
 
 // ============================================================
@@ -597,11 +615,24 @@ model StockAdjustment {
   reason String
   status String @default("PENDING")
 
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+
+  systemQuantity Int
+  countedQuantity Int
+  difference Int
+
   createdById String
+  createdBy User @relation(fields: [createdById], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([createdById])
+  @@index([variantId])
+  @@index([locationId])
   @@index([status])
 }

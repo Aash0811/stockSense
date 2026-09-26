@@ -1,6 +1,6 @@
 const express = require("express");
 
-const controller = require("./receiving.controller");
+const controller = require("./receipt.controller");
 
 const authenticate = require("../../middleware/auth.middleware");
 

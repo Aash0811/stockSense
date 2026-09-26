@@ -25,4 +25,10 @@ router.patch(
   controller.updateDeliveryStatus
 );
 
+router.post(
+  "/:id/fulfill",
+  authorize("ADMIN", "INVENTORY_MANAGER", "WAREHOUSE_STAFF"),
+  controller.fulfillDelivery
+);
+
 module.exports = router;

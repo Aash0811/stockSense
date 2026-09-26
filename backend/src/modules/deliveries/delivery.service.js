@@ -1,4 +1,8 @@
 const prisma = require("../../database/prisma");
+const {
+  MOVEMENT_TYPES,
+} = require("../inventory/inventory.constants");
+const inventoryService = require("../inventory/inventory.service");
 
 const STATUS_TRANSITIONS = {
   DRAFT: ["READY", "CANCELED"],
@@ -67,28 +71,19 @@ async function ensureLocation(tx, locationId, warehouseId) {
   });
 
   if (!location) {
-    const error = new Error(`Location ${locationId} not found`);
-    error.statusCode = 404;
-    error.code = "LOCATION_NOT_FOUND";
-    throw error;
+    throw createDeliveryError(`Location ${locationId} not found`, 404, "LOCATION_NOT_FOUND");
   }
 
   if (location.warehouseId !== warehouseId) {
-    const error = new Error(
-      "Location does not belong to the selected warehouse"
+    throw createDeliveryError(
+      "Location does not belong to the selected warehouse",
+      400,
+      "LOCATION_WAREHOUSE_MISMATCH"
     );
-
-    error.statusCode = 400;
-    error.code = "LOCATION_WAREHOUSE_MISMATCH";
-
-    throw error;
   }
 
   if (!location.isActive) {
-    const error = new Error("Location is inactive");
-    error.statusCode = 400;
-    error.code = "LOCATION_INACTIVE";
-    throw error;
+    throw createDeliveryError("Location is inactive", 400, "LOCATION_INACTIVE");
   }
 
   return location;
@@ -155,6 +150,13 @@ async function createDelivery(data, userId) {
       isolationLevel: "Serializable",
     }
   );
+}
+
+function createDeliveryError(message, statusCode, code) {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.code = code;
+  return error;
 }
 
 async function getDeliveryById(id) {
@@ -290,9 +292,128 @@ async function updateDeliveryStatus(id, newStatus) {
   );
 }
 
+async function fulfillDelivery(
+  id,
+  requestedItems,
+  userId,
+  idempotencyKey
+) {
+  return prisma.$transaction(
+    async (tx) => {
+      const delivery = await tx.delivery.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+
+      if (!delivery) {
+        const error = new Error("Delivery not found");
+        error.statusCode = 404;
+        error.code = "DELIVERY_NOT_FOUND";
+        throw error;
+      }
+
+      if (!["READY", "PICKING", "PACKED", "SHIPPED"].includes(delivery.status)) {
+        const error = new Error(
+          `Delivery cannot be fulfilled while ${delivery.status}`
+        );
+        error.statusCode = 400;
+        error.code = "DELIVERY_NOT_FULFILLABLE";
+        throw error;
+      }
+
+      const deliveryItems = new Map(
+        delivery.items.map((item) => [item.id, item])
+      );
+      const seenItemIds = new Set();
+
+      for (const requestedItem of requestedItems) {
+        if (seenItemIds.has(requestedItem.deliveryItemId)) {
+          const error = new Error("Duplicate delivery item in fulfillment request");
+          error.statusCode = 400;
+          error.code = "DUPLICATE_DELIVERY_ITEM";
+          throw error;
+        }
+
+        seenItemIds.add(requestedItem.deliveryItemId);
+        const deliveryItem = deliveryItems.get(requestedItem.deliveryItemId);
+
+        if (!deliveryItem) {
+          const error = new Error("Delivery item does not belong to this delivery");
+          error.statusCode = 400;
+          error.code = "DELIVERY_ITEM_MISMATCH";
+          throw error;
+        }
+
+        const remaining =
+          deliveryItem.orderedQuantity - deliveryItem.deliveredQuantity;
+
+        if (requestedItem.quantity > remaining) {
+          const error = new Error(
+            `Fulfillment exceeds remaining quantity for delivery item ${deliveryItem.id}`
+          );
+          error.statusCode = 409;
+          error.code = "DELIVERY_OVER_FULFILLMENT";
+          throw error;
+        }
+
+        const itemKey = idempotencyKey
+          ? `delivery:${id}:request:${idempotencyKey}:item:${deliveryItem.id}`
+          : `delivery:${id}:item:${deliveryItem.id}:from:${deliveryItem.deliveredQuantity}:quantity:${requestedItem.quantity}`;
+
+        const movementResult = await inventoryService.recordMovementInTransaction(tx, {
+          variantId: deliveryItem.variantId,
+          locationId: deliveryItem.locationId,
+          type: MOVEMENT_TYPES.DELIVERY,
+          quantity: requestedItem.quantity,
+          referenceType: "DELIVERY",
+          referenceId: id,
+          idempotencyKey: itemKey,
+          createdById: userId,
+        });
+
+        if (!movementResult.alreadyProcessed) {
+          await tx.deliveryItem.update({
+            where: { id: deliveryItem.id },
+            data: {
+              deliveredQuantity: {
+                increment: requestedItem.quantity,
+              },
+            },
+          });
+        }
+      }
+
+      const updatedItems = await tx.deliveryItem.findMany({
+        where: { deliveryId: id },
+      });
+      const fullyDelivered = updatedItems.every(
+        (item) => item.deliveredQuantity >= item.orderedQuantity
+      );
+
+      return tx.delivery.update({
+        where: { id },
+        data: {
+          status: fullyDelivered ? "DELIVERED" : delivery.status,
+        },
+        include: {
+          warehouse: true,
+          items: {
+            include: {
+              variant: { include: { product: true } },
+              location: true,
+            },
+          },
+        },
+      });
+    },
+    { isolationLevel: "Serializable" }
+  );
+}
+
 module.exports = {
   createDelivery,
   getDeliveryById,
   getDeliveries,
   updateDeliveryStatus,
+  fulfillDelivery,
 };

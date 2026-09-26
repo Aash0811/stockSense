@@ -2,6 +2,7 @@ const asyncHandler = require("../../utils/asyncHandler");
 const {
   createDeliverySchema,
   updateDeliveryStatusSchema,
+  fulfillDeliverySchema,
   deliveryListQuerySchema,
 } = require("./delivery.validation");
 
@@ -56,9 +57,26 @@ const updateDeliveryStatus = asyncHandler(async (req, res) => {
   });
 });
 
+const fulfillDelivery = asyncHandler(async (req, res) => {
+  const data = fulfillDeliverySchema.parse(req.body);
+
+  const delivery = await deliveryService.fulfillDelivery(
+    req.params.id,
+    data.items,
+    req.user.userId,
+    req.get("Idempotency-Key")
+  );
+
+  res.json({
+    success: true,
+    data: delivery,
+  });
+});
+
 module.exports = {
   createDelivery,
   getDeliveries,
   getDeliveryById,
   updateDeliveryStatus,
+  fulfillDelivery,
 };

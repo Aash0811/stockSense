@@ -7,7 +7,7 @@ const {
   createPurchaseOrderSchema,
   purchaseOrderIdSchema,
   updatePurchaseOrderStatusSchema,
-} = require("./purchasing.validation");
+} = require("./purchaseOrder.validation");
 
 const createPurchaseOrder = asyncHandler(
   async (req, res) => {
