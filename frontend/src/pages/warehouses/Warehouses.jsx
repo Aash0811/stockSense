@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Layers,
   ArrowRight,
+  Plus,
 } from "lucide-react";
 import AppLayout from "../../components/layout/AppLayout";
 import useAuth from "../../hooks/useAuth";
@@ -14,28 +15,76 @@ import useAuth from "../../hooks/useAuth";
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function Warehouses() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const navigate = useNavigate();
   const [warehouses, setWarehouses] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    code: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "USA",
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const canManage = user?.role === "ADMIN" || user?.role === "INVENTORY_MANAGER";
 
   useEffect(() => {
     if (!token) return;
+    loadWarehouses();
+  }, [search, token]);
+
+  async function loadWarehouses() {
     const params = search ? `?search=${encodeURIComponent(search)}` : "";
     setLoading(true);
-    fetch(`${API_URL}/warehouses${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async (res) => {
-        const body = await res.json();
-        if (!res.ok) throw new Error(body.error?.message || "Failed to load warehouses");
-        setWarehouses(body.data?.items || []);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [search, token]);
+    try {
+      const res = await fetch(`${API_URL}/warehouses${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error?.message || "Failed to load warehouses");
+      setWarehouses(body.data?.items || []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreateWarehouse(e) {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/warehouses`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error?.message || "Failed to create warehouse");
+
+      setSuccessMsg(`Warehouse ${body.data.name} (${body.data.code}) created successfully!`);
+      setIsCreateOpen(false);
+      setForm({ name: "", code: "", address: "", city: "", state: "", country: "USA" });
+      await loadWarehouses();
+      setTimeout(() => setSuccessMsg(""), 4000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <AppLayout>
@@ -45,12 +94,21 @@ export default function Warehouses() {
           <p>Multi-warehouse infrastructure powering distributed inventory fulfillment</p>
         </div>
         <div className="header-actions">
-          <button className="btn-primary" onClick={() => navigate("/locations")}>
+          {canManage && (
+            <button className="btn-primary" onClick={() => setIsCreateOpen(true)}>
+              <Plus size={16} />
+              <span>+ Add Warehouse</span>
+            </button>
+          )}
+          <button className="btn-secondary" onClick={() => navigate("/locations")}>
             <Layers size={15} />
             <span>View Location Hierarchies</span>
           </button>
         </div>
       </div>
+
+      {error && <div className="notice-box notice-danger">{error}</div>}
+      {successMsg && <div className="notice-box notice-success">{successMsg}</div>}
 
       <div className="filters-toolbar">
         <div className="search-input-box">
@@ -66,8 +124,6 @@ export default function Warehouses() {
           Active Facilities: <strong style={{ color: "#fff" }}>{warehouses.length}</strong>
         </div>
       </div>
-
-      {error && <div className="notice-box notice-danger">{error}</div>}
 
       <div className="table-card">
         <table className="data-table">
@@ -145,6 +201,89 @@ export default function Warehouses() {
           </tbody>
         </table>
       </div>
+
+      {/* CREATE WAREHOUSE MODAL */}
+      {isCreateOpen && (
+        <div className="modal-overlay" onClick={() => setIsCreateOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Create New Warehouse Facility</h3>
+              <button className="action-btn-sm" onClick={() => setIsCreateOpen(false)}>✕</button>
+            </div>
+
+            <form onSubmit={handleCreateWarehouse}>
+              <div className="modal-body form-grid">
+                <div className="form-group">
+                  <label>Warehouse Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. East Coast Fulfillment Hub"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Warehouse Code (Unique) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. WH-EAST-01"
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Street Address</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 500 Industrial Parkway"
+                    value={form.address}
+                    onChange={(e) => setForm({ ...form, address: e.target.value })}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div className="form-group">
+                    <label>City</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Newark"
+                      value={form.city}
+                      onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>State / Region</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. NJ"
+                      value={form.state}
+                      onChange={(e) => setForm({ ...form, state: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setIsCreateOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={submitting}>
+                  {submitting ? "Creating Warehouse..." : "Create Facility"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

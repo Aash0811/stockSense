@@ -5,7 +5,14 @@ const validate = require("../../middleware/validate.middleware");
 const authenticate = require("../../middleware/auth.middleware");
 const asyncHandler = require("../../utils/asyncHandler");
 
-const { loginSchema, signupSchema, requestResetSchema, resetPasswordSchema } = require("./auth.validation");
+const {
+  loginSchema,
+  signupSchema,
+  requestResetSchema,
+  resetPasswordSchema,
+  requestLoginOtpSchema,
+  verifyLoginOtpSchema,
+} = require("./auth.validation");
 
 const router = express.Router();
 
@@ -22,6 +29,18 @@ router.post(
   "/login",
   validate(loginSchema),
   asyncHandler(authController.login)
+);
+
+router.post(
+  "/otp/request",
+  validate(requestLoginOtpSchema),
+  asyncHandler(authController.requestLoginOtp)
+);
+
+router.post(
+  "/otp/verify",
+  validate(verifyLoginOtpSchema),
+  asyncHandler(authController.verifyLoginOtp)
 );
 
 router.get(

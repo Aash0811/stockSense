@@ -39,6 +39,8 @@ export default function Dashboard() {
   const [categories, setCategories] = useState([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedDocType, setSelectedDocType] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [explainOpen, setExplainOpen] = useState(false);
@@ -135,6 +137,16 @@ export default function Dashboard() {
     { name: "Out of Stock", value: data?.outOfStock || 0 },
   ];
 
+  const filteredMovements = (data?.recentMovements || []).filter((move) => {
+    if (selectedDocType) {
+      if (selectedDocType === "RECEIPTS" && move.type !== "RECEIPT") return false;
+      if (selectedDocType === "DELIVERY" && move.type !== "DELIVERY") return false;
+      if (selectedDocType === "TRANSFER" && !["TRANSFER_IN", "TRANSFER_OUT"].includes(move.type)) return false;
+      if (selectedDocType === "ADJUSTMENT" && move.type !== "ADJUSTMENT") return false;
+    }
+    return true;
+  });
+
   return (
     <AppLayout>
       {/* Page Header */}
@@ -164,8 +176,37 @@ export default function Dashboard() {
         <div className="filter-group">
           <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-muted)", fontSize: "12px", fontWeight: 600 }}>
             <Filter size={14} />
-            <span>FILTER SCOPE:</span>
+            <span>DYNAMIC FILTERS:</span>
           </div>
+
+          {/* By Document Type */}
+          <select
+            className="filter-select"
+            value={selectedDocType}
+            onChange={(e) => setSelectedDocType(e.target.value)}
+          >
+            <option value="">All Document Types</option>
+            <option value="RECEIPTS">Receipts (Incoming)</option>
+            <option value="DELIVERY">Delivery Orders (Outgoing)</option>
+            <option value="TRANSFER">Internal Transfers</option>
+            <option value="ADJUSTMENT">Stock Adjustments</option>
+          </select>
+
+          {/* By Status */}
+          <select
+            className="filter-select"
+            value={selectedStatus}
+            onChange={(e) => setSelectedStatus(e.target.value)}
+          >
+            <option value="">All Statuses</option>
+            <option value="DRAFT">Draft</option>
+            <option value="WAITING">Waiting</option>
+            <option value="READY">Ready</option>
+            <option value="DONE">Done</option>
+            <option value="CANCELED">Canceled</option>
+          </select>
+
+          {/* By Warehouse / Location */}
           <select
             className="filter-select"
             value={selectedWarehouse}
@@ -179,6 +220,7 @@ export default function Dashboard() {
             ))}
           </select>
 
+          {/* By Category */}
           <select
             className="filter-select"
             value={selectedCategory}
@@ -192,12 +234,14 @@ export default function Dashboard() {
             ))}
           </select>
 
-          {(selectedWarehouse || selectedCategory) && (
+          {(selectedWarehouse || selectedCategory || selectedDocType || selectedStatus) && (
             <button
               className="action-btn-sm"
               onClick={() => {
                 setSelectedWarehouse("");
                 setSelectedCategory("");
+                setSelectedDocType("");
+                setSelectedStatus("");
               }}
               style={{ color: "var(--accent-rose)" }}
             >
@@ -207,6 +251,11 @@ export default function Dashboard() {
         </div>
 
         <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+          {selectedDocType && (
+            <span style={{ color: "var(--accent-cyan)", fontWeight: 600, marginRight: "8px" }}>
+              Filter: {selectedDocType}
+            </span>
+          )}
           Ledger Status: <span style={{ color: "var(--accent-emerald)", fontWeight: 600 }}>Live & Audited</span>
         </div>
       </div>
@@ -270,7 +319,7 @@ export default function Dashboard() {
       )}
 
       {/* Split Section: Analytics & Recent Activity */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))", gap: "20px", marginBottom: "24px" }}>
         {/* Stock Health Distribution Donut */}
         <div className="table-card" style={{ padding: "20px", margin: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
@@ -336,8 +385,8 @@ export default function Dashboard() {
           </div>
 
           <div style={{ display: "grid", gap: "8px" }}>
-            {data?.recentMovements && data.recentMovements.length > 0 ? (
-              data.recentMovements.map((move) => (
+            {filteredMovements && filteredMovements.length > 0 ? (
+              filteredMovements.map((move) => (
                 <div
                   key={move.id}
                   style={{

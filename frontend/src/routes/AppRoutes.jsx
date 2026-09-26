@@ -18,6 +18,7 @@ import ReportsOverview from "../pages/reports/ReportsOverview";
 import Assistant from "../pages/reports/Assistant";
 import Warehouses from "../pages/warehouses/Warehouses";
 import Locations from "../pages/warehouses/Locations";
+import Users from "../pages/admin/Users";
 
 export default function AppRoutes() {
   return (
@@ -45,6 +46,7 @@ export default function AppRoutes() {
       <Route path="/assistant" element={<ProtectedRoute><Assistant /></ProtectedRoute>} />
       <Route path="/warehouses" element={<ProtectedRoute><Warehouses /></ProtectedRoute>} />
       <Route path="/locations" element={<ProtectedRoute><Locations /></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

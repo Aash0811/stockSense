@@ -23,6 +23,7 @@ const transferRoutes = require("./modules/transfers/transfer.routes");
 const adjustmentRoutes = require("./modules/adjustments/adjustment.routes");
 const reportRoutes = require("./modules/reports/report.routes");
 const auditRoutes = require("./modules/audit/audit.routes");
+const userRoutes = require("./modules/users/user.routes");
 // ============================================================
 // GLOBAL MIDDLEWARE
 // ============================================================
@@ -85,6 +86,7 @@ app.use("/api/transfers", transferRoutes);
 app.use("/api/adjustments", adjustmentRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/audit", auditRoutes);
+app.use("/api/users", userRoutes);
 
 // ============================================================
 // ERROR HANDLING

@@ -32,9 +32,28 @@ const resetPasswordSchema = z.object({
 	query: z.object({}),
 });
 
+const requestLoginOtpSchema = z.object({
+	body: z.object({
+		email: z.string().trim().email(),
+	}),
+	params: z.object({}),
+	query: z.object({}),
+});
+
+const verifyLoginOtpSchema = z.object({
+	body: z.object({
+		email: z.string().trim().email(),
+		otp: z.string().regex(/^\d{6}$/, "OTP must be a 6-digit code"),
+	}),
+	params: z.object({}),
+	query: z.object({}),
+});
+
 module.exports = {
 	loginSchema,
 	signupSchema,
 	requestResetSchema,
 	resetPasswordSchema,
+	requestLoginOtpSchema,
+	verifyLoginOtpSchema,
 };

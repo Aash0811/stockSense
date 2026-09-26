@@ -29,11 +29,50 @@ export function AuthProvider({ children }) {
 		localStorage.setItem("stocksense_user", JSON.stringify(body.data.user));
 	}
 
+	async function requestLoginOtp(email) {
+		const response = await fetch(`${API_URL}/auth/otp/request`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ email }),
+		});
+		const body = await response.json();
+		if (!response.ok) throw new Error(body.error?.message || "Failed to send OTP");
+		return body.data;
+	}
+
+	async function loginWithOtp(email, otp) {
+		const response = await fetch(`${API_URL}/auth/otp/verify`, {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({ email, otp }),
+		});
+		const body = await response.json();
+		if (!response.ok) throw new Error(body.error?.message || "OTP verification failed");
+		setToken(body.data.token);
+		setUser(body.data.user);
+		localStorage.setItem("stocksense_user", JSON.stringify(body.data.user));
+		return body.data;
+	}
+
 	function logout() {
 		setToken(null);
 		setUser(null);
 		localStorage.removeItem("stocksense_user");
 	}
 
-	return <AuthContext.Provider value={{ token, user, isAuthenticated: Boolean(token), login, logout }}>{children}</AuthContext.Provider>;
+	return (
+		<AuthContext.Provider
+			value={{
+				token,
+				user,
+				isAuthenticated: Boolean(token),
+				login,
+				requestLoginOtp,
+				loginWithOtp,
+				logout,
+			}}
+		>
+			{children}
+		</AuthContext.Provider>
+	);
 }

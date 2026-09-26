@@ -30,6 +30,18 @@ async function login(req, res) {
   );
 }
 
+async function requestLoginOtp(req, res) {
+  const { email } = req.validated.body;
+  const result = await authService.requestLoginOtp(email);
+  return successResponse(res, result, "Login OTP dispatched successfully");
+}
+
+async function verifyLoginOtp(req, res) {
+  const { email, otp } = req.validated.body;
+  const result = await authService.verifyLoginOtp(email, otp);
+  return successResponse(res, result, "Login successful");
+}
+
 async function me(req, res) {
   const user = await authService.getCurrentUser(req.user.userId);
 
@@ -45,5 +57,7 @@ module.exports = {
   requestPasswordReset,
   resetPassword,
   login,
+  requestLoginOtp,
+  verifyLoginOtp,
   me,
 };

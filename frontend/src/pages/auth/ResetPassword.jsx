@@ -12,6 +12,8 @@ export default function ResetPassword() {
   const [requested, setRequested] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [previewUrl, setPreviewUrl] = useState(null);
+
   async function requestCode(e) {
     e.preventDefault();
     setError("");
@@ -26,8 +28,11 @@ export default function ResetPassword() {
       if (!res.ok) throw new Error(body.error?.message || "Failed to request reset OTP");
 
       setRequested(true);
+      if (body.data?.previewUrl) {
+        setPreviewUrl(body.data.previewUrl);
+      }
       if (body.data?.devOtp) {
-        setMessage(`Development OTP Generated: ${body.data.devOtp}`);
+        setMessage(`Security OTP dispatched via Nodemailer! Dev code: ${body.data.devOtp}`);
         setForm((f) => ({ ...f, otp: body.data.devOtp }));
       } else {
         setMessage(body.data?.message || "OTP code sent to email.");

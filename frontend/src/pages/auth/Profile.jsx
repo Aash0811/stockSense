@@ -65,7 +65,7 @@ export default function Profile() {
 
       {error && <div className="notice-box notice-danger">{error}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px" }}>
         {/* User Identity Card */}
         <div className="table-card" style={{ padding: "28px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "24px" }}>

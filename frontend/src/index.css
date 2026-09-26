@@ -121,10 +121,11 @@ button, input, select, textarea {
 
 .content-container {
   flex: 1;
-  padding: 32px 36px;
-  max-width: 1440px;
+  padding: 24px 28px;
+  max-width: 100%;
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
+  min-width: 0;
 }
 
 /* ============================================================
@@ -633,13 +634,16 @@ button, input, select, textarea {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: var(--shadow-sm);
   margin-bottom: 24px;
+  width: 100%;
 }
 
 .data-table {
   width: 100%;
+  min-width: 680px;
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;
