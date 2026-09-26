@@ -116,4 +116,14 @@ async function getTransfer(id) {
 	return transfer;
 }
 
-module.exports = { createTransfer, dispatchTransfer, receiveTransfer, getTransfer };
+async function getTransfers(query = {}) {
+	const page = Math.max(Number(query.page) || 1, 1);
+	const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+	const [items, total] = await prisma.$transaction([
+		prisma.transfer.findMany({ skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" }, include: { items: true, sourceWarehouse: true, destinationWarehouse: true } }),
+		prisma.transfer.count(),
+	]);
+	return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+}
+
+module.exports = { createTransfer, dispatchTransfer, receiveTransfer, getTransfer, getTransfers };

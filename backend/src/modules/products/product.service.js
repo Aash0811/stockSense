@@ -1,4 +1,4 @@
-const { prisma } = require("../../database/prisma");
+const prisma = require("../../database/prisma");
 
 function conflict(message) {
   const error = new Error(message);
@@ -21,9 +21,29 @@ async function ensureCategoryExists(categoryId) {
     throw notFound("Category not found");
   }
 
-  if (!category.active) {
+  if (!category.isActive) {
     throw conflict("Cannot use an inactive category");
   }
+}
+
+async function findByBarcode(barcode) {
+  const product = await prisma.product.findFirst({
+    where: {
+      OR: [
+        { barcode },
+        { variants: { some: { barcode } } },
+      ],
+    },
+    include: { category: true, variants: true },
+  });
+
+  if (!product) {
+    const error = notFound("Product barcode not found");
+    error.code = "BARCODE_NOT_FOUND";
+    throw error;
+  }
+
+  return product;
 }
 
 async function ensureProductIdentifiersAvailable({
@@ -459,4 +479,5 @@ module.exports = {
   createVariant,
   updateVariant,
   deactivateVariant,
+  findByBarcode,
 };

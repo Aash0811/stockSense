@@ -1,4 +1,4 @@
-const { prisma } = require("../../database/prisma");
+const prisma = require("../../database/prisma");
 
 function createError(message, statusCode = 400) {
   const error = new Error(message);

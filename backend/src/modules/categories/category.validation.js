@@ -8,7 +8,7 @@ const createCategorySchema = z.object({
 const updateCategorySchema = z.object({
   name: z.string().trim().min(2).max(100).optional(),
   description: z.string().trim().max(500).optional(),
-  active: z.boolean().optional(),
+  isActive: z.boolean().optional(),
 });
 
 const categoryIdSchema = z.object({

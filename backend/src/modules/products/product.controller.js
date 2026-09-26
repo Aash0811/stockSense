@@ -113,6 +113,11 @@ const deactivateVariant = asyncHandler(async (req, res) => {
   );
 });
 
+const lookupBarcode = asyncHandler(async (req, res) => {
+  const product = await service.findByBarcode(req.params.barcode.trim());
+  return successResponse(res, product);
+});
+
 module.exports = {
   createProduct,
   getProducts,
@@ -122,4 +127,5 @@ module.exports = {
   createVariant,
   updateVariant,
   deactivateVariant,
+  lookupBarcode,
 };

@@ -1,4 +1,4 @@
-const { prisma } = require("../../database/prisma");
+const prisma = require("../../database/prisma");
 
 const {
   recordMovementInTransaction,
@@ -233,6 +233,24 @@ async function createReceipt(data, userId) {
     }
   );
 }
+
+async function getReceipts(query = {}) {
+  const page = Math.max(Number(query.page) || 1, 1);
+  const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+  const [items, total] = await prisma.$transaction([
+    prisma.receipt.findMany({ skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" }, include: { items: true, purchaseOrder: true, warehouse: true } }),
+    prisma.receipt.count(),
+  ]);
+  return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+}
+
+async function getReceiptById(id) {
+  const receipt = await prisma.receipt.findUnique({ where: { id }, include: { items: true, purchaseOrder: { include: { items: true } }, warehouse: true } });
+  if (!receipt) throw createError("Receipt not found", 404);
+  return receipt;
+}
 module.exports = {
   createReceipt,
+  getReceipts,
+  getReceiptById,
 };

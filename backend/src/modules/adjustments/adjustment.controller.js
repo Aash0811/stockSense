@@ -13,4 +13,6 @@ const getAdjustment = asyncHandler(async (req, res) => {
 	return successResponse(res, await service.getAdjustment(id));
 });
 
-module.exports = { createAdjustment, getAdjustment };
+const getAdjustments = asyncHandler(async (req, res) => successResponse(res, await service.getAdjustments(req.query)));
+
+module.exports = { createAdjustment, getAdjustment, getAdjustments };

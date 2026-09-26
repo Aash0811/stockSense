@@ -1,4 +1,4 @@
-const { prisma } = require("../../database/prisma");
+const prisma = require("../../database/prisma");
 
 async function createCategory(data) {
   const existing = await prisma.category.findUnique({
@@ -28,7 +28,7 @@ async function getCategories(query) {
 
   const where = {
     ...(query.active !== undefined && {
-      active: query.active === "true",
+      isActive: query.active === "true",
     }),
 
     ...(search && {
@@ -126,7 +126,7 @@ async function updateCategory(id, data) {
 
 async function deactivateCategory(id) {
   return updateCategory(id, {
-    active: false,
+    isActive: false,
   });
 }
 

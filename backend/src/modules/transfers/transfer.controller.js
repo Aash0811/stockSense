@@ -24,4 +24,6 @@ const receiveTransfer = asyncHandler(async (req, res) => {
 	return successResponse(res, await service.receiveTransfer(id, data.items, req.user.userId));
 });
 
-module.exports = { createTransfer, getTransfer, dispatchTransfer, receiveTransfer };
+const getTransfers = asyncHandler(async (req, res) => successResponse(res, await service.getTransfers(req.query)));
+
+module.exports = { createTransfer, getTransfer, getTransfers, dispatchTransfer, receiveTransfer };

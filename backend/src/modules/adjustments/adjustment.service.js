@@ -60,4 +60,14 @@ async function getAdjustment(id) {
 	return adjustment;
 }
 
-module.exports = { createAdjustment, getAdjustment };
+async function getAdjustments(query = {}) {
+	const page = Math.max(Number(query.page) || 1, 1);
+	const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+	const [items, total] = await prisma.$transaction([
+		prisma.stockAdjustment.findMany({ skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" }, include: { variant: true, location: true } }),
+		prisma.stockAdjustment.count(),
+	]);
+	return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+}
+
+module.exports = { createAdjustment, getAdjustment, getAdjustments };

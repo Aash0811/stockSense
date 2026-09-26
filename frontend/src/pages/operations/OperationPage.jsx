@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, LogOut, Plus, Search } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -13,6 +13,9 @@ const operations = {
   adjustments: { title: "Adjustments", description: "Reconcile system stock with physical counts.", endpoint: "/adjustments", columns: ["adjustmentNumber", "status", "createdAt"] },
   reports: { title: "Reports", description: "Review operational stock intelligence.", endpoint: "/reports/dashboard", columns: [] },
   audit: { title: "Audit log", description: "Review immutable stock movement history.", endpoint: "/audit", columns: ["type", "quantity", "referenceType", "createdAt"] },
+  forecast: { title: "Forecast", description: "Estimate stock runway from recent demand.", endpoint: "/reports/forecast", columns: ["product", "sku", "available", "dailyDemand", "daysUntilStockout"] },
+  anomalies: { title: "Anomalies", description: "Review unusual movement activity.", endpoint: "/reports/anomalies", columns: ["type", "quantity", "product", "reason", "createdAt"] },
+  notifications: { title: "Notifications", description: "See low-stock and out-of-stock alerts.", endpoint: "/reports/notifications", columns: ["type", "severity", "message"] },
 };
 
 function displayValue(value) {
@@ -22,7 +25,8 @@ function displayValue(value) {
 }
 
 export default function OperationPage() {
-  const { section } = useParams();
+  const location = useLocation();
+  const section = location.pathname.split("/")[1];
   const { token, user, logout } = useAuth();
   const navigate = useNavigate();
   const operation = operations[section] || operations.products;

@@ -13,6 +13,8 @@ router.use(auth);
  */
 router.get("/", controller.getProducts);
 
+router.get("/lookup/barcode/:barcode", controller.lookupBarcode);
+
 router.get("/:id", controller.getProduct);
 
 /*
