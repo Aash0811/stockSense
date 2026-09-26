@@ -1,6 +1,23 @@
 const authService = require("./auth.service");
 const { successResponse } = require("../../utils/apiResponse");
 
+async function signup(req, res) {
+  const { name, email, password } = req.validated.body;
+  const user = await authService.signup(name, email, password);
+  return successResponse(res, user, "Account created successfully", 201);
+}
+
+async function requestPasswordReset(req, res) {
+  const result = await authService.requestPasswordReset(req.validated.body.email);
+  return successResponse(res, result);
+}
+
+async function resetPassword(req, res) {
+  const { email, otp, password } = req.validated.body;
+  const result = await authService.resetPassword(email, otp, password);
+  return successResponse(res, result);
+}
+
 async function login(req, res) {
   const { email, password } = req.validated.body;
 
@@ -24,6 +41,9 @@ async function me(req, res) {
 }
 
 module.exports = {
+  signup,
+  requestPasswordReset,
+  resetPassword,
   login,
   me,
 };

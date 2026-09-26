@@ -33,7 +33,7 @@ export default function Dashboard() {
 		<main className="dashboard-shell">
 			<aside className="sidebar">
 				<div className="brand-mark"><span>SS</span><div><strong>StockSense</strong><small>Inventory operations</small></div></div>
-				<nav><a className="nav-active" href="/dashboard">Overview</a><a href="/products">Products</a><a href="/warehouses">Warehouses</a><a href="/locations">Locations</a><a href="/receipts">Receipts</a><a href="/deliveries">Deliveries</a><a href="/transfers">Transfers</a><a href="/adjustments">Adjustments</a><a href="/forecast">Forecast</a><a href="/anomalies">Anomalies</a><a href="/notifications">Notifications</a><a href="/audit">Audit log</a><a href="/assistant">Assistant</a></nav>
+				<nav><a className="nav-active" href="/dashboard">Overview</a><a href="/products">Products</a><a href="/inventory">Inventory</a><a href="/movements">Move history</a><a href="/warehouses">Warehouses</a><a href="/locations">Locations</a><a href="/receipts">Receipts</a><a href="/deliveries">Deliveries</a><a href="/transfers">Transfers</a><a href="/adjustments">Adjustments</a><a href="/forecast">Forecast</a><a href="/anomalies">Anomalies</a><a href="/notifications">Notifications</a><a href="/audit">Audit log</a><a href="/assistant">Assistant</a><a href="/profile">My profile</a></nav>
 			</aside>
 			<section className="dashboard-content">
 				<header className="dashboard-header"><div><p className="eyebrow">Operations center</p><h1>Inventory at a glance</h1><p className="muted">A live view of stock health and work waiting across your warehouses.</p></div><span className="status-pill"><i /> System online</span></header>

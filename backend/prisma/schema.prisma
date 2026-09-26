@@ -88,12 +88,26 @@ model User {
   stockMovements StockMovement[]
   createdPOs     PurchaseOrder[] @relation("PurchaseOrderCreator")
   stockAdjustments StockAdjustment[]
+  passwordResetTokens PasswordResetToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([role])
   @@index([isActive])
+}
+
+model PasswordResetToken {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  otpHash String
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ============================================================

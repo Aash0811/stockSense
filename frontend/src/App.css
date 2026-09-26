@@ -270,5 +270,12 @@
 .product-form label { display: grid; gap: 7px; color: #53645a; font: 12px Arial, sans-serif; }
 .product-form input, .product-form select { padding: 11px; border: 1px solid #d4ded2; background: #fff; color: #17352c; font: 13px Arial, sans-serif; }
 .product-form button { align-self: end; min-height: 38px; }
+.table-action { padding: 6px 9px; border: 1px solid #d4ded2; background: #fff; color: #355232; cursor: pointer; font: 11px Arial, sans-serif; }
+.profile-card { display: flex; gap: 28px; max-width: 720px; padding: 30px; background: #fff; border: 1px solid #dfe6dd; }
+.profile-avatar { display: grid; place-items: center; flex: 0 0 64px; height: 64px; background: #d5ed63; color: #17352c; }
+.profile-details h2 { margin: 0 0 20px; color: #17352c; font-size: 28px; letter-spacing: 0; }
+.profile-details dl { display: grid; grid-template-columns: 130px 1fr; gap: 12px 20px; margin: 0; font: 13px Arial, sans-serif; }
+.profile-details dt { color: #6e7d74; }
+.profile-details dd { margin: 0; color: #283c31; }
 @media (max-width: 760px) { .product-form { grid-template-columns: 1fr; } }
 @media (max-width: 650px) { .operation-header, .operation-toolbar { display: block; } .operation-actions { margin-top: 22px; } .search-box { width: 100%; box-sizing: border-box; } .primary-action { margin-top: 12px; min-height: 40px; } }
