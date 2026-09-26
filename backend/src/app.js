@@ -17,7 +17,7 @@ const warehouseRoutes = require("./modules/warehouses/warehouse.routes");
 const locationRoutes = require("./modules/locations/location.routes");
 const inventoryRoutes = require("./modules/inventory/inventory.routes");
 const purchasingRoutes = require("./modules/purchasing/purchasing.routes");
-
+const deliveryRoutes = require("./modules/deliveries/delivery.routes");
 const receivingRoutes = require("./modules/receiving/receiving.routes");
 // ============================================================
 // GLOBAL MIDDLEWARE
@@ -71,6 +71,7 @@ app.use("/api/locations", locationRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/purchase-orders",purchasingRoutes);
 app.use("/api/receipts",receivingRoutes);
+app.use("/api/deliveries", deliveryRoutes);
 
 // ============================================================
 // ERROR HANDLING

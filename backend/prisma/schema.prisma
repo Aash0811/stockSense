@@ -63,6 +63,16 @@ enum PurchaseOrderStatus {
   CANCELLED
 }
 
+enum DeliveryStatus {
+  DRAFT
+  READY
+  PICKING
+  PACKED
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
 // ============================================================
 // USER
 // ============================================================
@@ -462,7 +472,7 @@ model Delivery {
   warehouseId String
   warehouse   Warehouse @relation(fields: [warehouseId], references: [id])
 
-  status String @default("DRAFT")
+  status DeliveryStatus @default(DRAFT)
 
   items DeliveryItem[]
 

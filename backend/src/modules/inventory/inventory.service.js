@@ -106,6 +106,30 @@ async function getOrCreateInventory(
   });
 }
 
+async function updateDamagedStock(
+  tx,
+  { variantId, locationId, quantity }
+) {
+  if (quantity <= 0) {
+    return null;
+  }
+
+  const inventory = await getOrCreateInventory(tx, {
+    variantId,
+    locationId,
+  });
+
+  return tx.inventory.update({
+    where: {
+      id: inventory.id,
+    },
+    data: {
+      damaged: {
+        increment: quantity,
+      },
+    },
+  });
+}
 /*
  * Calculate available stock.
  *
@@ -322,6 +346,10 @@ async function recordMovement(data) {
   );
 }
 
+async function recordMovementInTransaction(tx, data) {
+  return applyStockMovement(tx, data);
+}
+
 /*
  * Read inventory.
  */
@@ -464,4 +492,6 @@ module.exports = {
   getInventory,
   getMovements,
   calculateAvailable,
+  recordMovementInTransaction,
+  updateDamagedStock,
 };

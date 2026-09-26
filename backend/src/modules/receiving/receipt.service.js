@@ -1,7 +1,8 @@
 const { prisma } = require("../../database/prisma");
 
 const {
-  recordMovement,
+  recordMovementInTransaction,
+  updateDamagedStock,
 } = require("../inventory/inventory.service");
 
 function createError(message, statusCode = 400) {
@@ -11,69 +12,59 @@ function createError(message, statusCode = 400) {
 }
 
 async function createReceipt(data, userId) {
-  /*
-   * We need the PO and all validation to happen
-   * before changing stock.
-   */
-  const purchaseOrder =
-    await prisma.purchaseOrder.findUnique({
-      where: {
-        id: data.purchaseOrderId,
-      },
+  const {
+    receiptNumber,
+    purchaseOrderId,
+    warehouseId,
+    items,
+    notes,
+  } = data;
 
-      include: {
-        items: true,
-      },
-    });
+  // Keep all validation BEFORE the transaction where possible.
+  const purchaseOrder = await prisma.purchaseOrder.findUnique({
+    where: {
+      id: purchaseOrderId,
+    },
+    include: {
+      items: true,
+    },
+  });
 
   if (!purchaseOrder) {
-    throw createError(
-      "Purchase order not found",
-      404
-    );
+    throw new Error("Purchase order not found");
   }
 
   if (
-    ![
-      "ORDERED",
-      "PARTIALLY_RECEIVED",
-    ].includes(purchaseOrder.status)
+    !["ORDERED", "PARTIALLY_RECEIVED"].includes(
+      purchaseOrder.status
+    )
   ) {
-    throw createError(
-      `Purchase order cannot be received while in ${purchaseOrder.status} status`,
-      409
+    throw new Error(
+      "Purchase order cannot receive stock in its current status"
     );
   }
 
-  if (
-    purchaseOrder.warehouseId !== data.warehouseId
-  ) {
-    throw createError(
-      "Receipt warehouse does not match purchase order warehouse",
-      400
+  if (purchaseOrder.warehouseId !== warehouseId) {
+    throw new Error(
+      "Receipt warehouse does not match purchase order warehouse"
     );
   }
 
-  /*
-   * Validate all receipt lines.
-   */
-  for (const item of data.items) {
+  // Validate every receipt line before changing anything.
+  for (const item of items) {
     const poItem = purchaseOrder.items.find(
-      (entry) =>
-        entry.id === item.purchaseOrderItemId
+      (entry) => entry.id === item.purchaseOrderItemId
     );
 
     if (!poItem) {
-      throw createError(
-        "Purchase order item not found",
-        404
+      throw new Error(
+        `Purchase order item ${item.purchaseOrderItemId} not found`
       );
     }
 
     if (poItem.variantId !== item.variantId) {
-      throw createError(
-        "Receipt variant does not match purchase order item",
-        400
+      throw new Error(
+        "Receipt variant does not match purchase order item"
       );
     }
 
@@ -82,336 +73,166 @@ async function createReceipt(data, userId) {
       Number(poItem.receivedQuantity);
 
     if (item.receivedQuantity > remaining) {
-      throw createError(
-        `Cannot receive ${item.receivedQuantity}. Remaining quantity is ${remaining}`,
-        409
+      throw new Error(
+        `Received quantity exceeds remaining quantity for purchase order item ${poItem.id}`
       );
     }
 
-    if (
-      item.damagedQuantity >
-      item.receivedQuantity
-    ) {
-      throw createError(
-        "Damaged quantity cannot exceed received quantity",
-        400
+    if (item.damagedQuantity > item.receivedQuantity) {
+      throw new Error(
+        "Damaged quantity cannot exceed received quantity"
       );
     }
   }
 
-  /*
-   * Create the receipt first.
-   */
-  const receipt = await prisma.$transaction(
+  return prisma.$transaction(
     async (tx) => {
-      const existingReceipt =
-        await tx.receipt.findUnique({
-          where: {
-            receiptNumber: data.receiptNumber,
-          },
-        });
+      // --------------------------------------------------
+      // 1. Create receipt
+      // --------------------------------------------------
 
-      if (existingReceipt) {
-        throw createError(
-          "Receipt number already exists",
-          409
-        );
-      }
-
-      const receipt =
-        await tx.receipt.create({
-          data: {
-            receiptNumber:
-              data.receiptNumber,
-
-            purchaseOrderId:
-              data.purchaseOrderId,
-
-            warehouseId:
-              data.warehouseId,
-
-            status: "RECEIVED",
-
-            receivedAt: new Date(),
-
-            createdById: userId,
-
-            items: {
-              create: data.items.map(
-                (item) => ({
-                  purchaseOrderItemId:
-                    item.purchaseOrderItemId,
-
-                  variantId:
-                    item.variantId,
-
-                  locationId:
-                    item.locationId,
-
-                  receivedQuantity:
-                    item.receivedQuantity,
-
-                  damagedQuantity:
-                    item.damagedQuantity,
-
-                  notes:
-                    item.notes || null,
-                })
-              ),
-            },
-          },
-
-          include: {
-            items: true,
-          },
-        });
-
-      return receipt;
-    }
-  );
-
-  /*
-   * Now apply stock movements.
-   *
-   * Good quantity goes into onHand.
-   */
-  for (const item of data.items) {
-    const goodQuantity =
-      item.receivedQuantity -
-      item.damagedQuantity;
-
-    if (goodQuantity > 0) {
-      await recordMovement({
-        variantId: item.variantId,
-
-        locationId: item.locationId,
-
-        type: "RECEIPT",
-
-        quantity: goodQuantity,
-
-        referenceType: "RECEIPT",
-
-        referenceId: receipt.id,
-
-        idempotencyKey:
-          `receipt:${receipt.id}:item:${item.purchaseOrderItemId}`,
-
-        reason: "Purchase order receipt",
-
-        createdById: userId,
+      const receipt = await tx.receipt.create({
+        data: {
+          receiptNumber,
+          purchaseOrderId,
+          warehouseId,
+          status: "RECEIVED",
+          receivedAt: new Date(),
+          createdById: userId,
+          notes,
+        },
       });
-    }
 
-    /*
-     * Damaged stock is recorded separately.
-     *
-     * It is physically received, but should not
-     * become available stock.
-     */
-    if (item.damagedQuantity > 0) {
-      await prisma.inventory.update({
-        where: {
-          variantId_locationId: {
+      // --------------------------------------------------
+      // 2. Process each receipt line
+      // --------------------------------------------------
+
+      for (const item of items) {
+        await tx.receiptItem.create({
+          data: {
+            receiptId: receipt.id,
+            purchaseOrderItemId: item.purchaseOrderItemId,
             variantId: item.variantId,
             locationId: item.locationId,
+            receivedQuantity: item.receivedQuantity,
+            damagedQuantity: item.damagedQuantity,
           },
-        },
+        });
 
-        data: {
-          damaged: {
-            increment:
-              item.damagedQuantity,
-          },
-        },
-      });
-    }
-  }
+        // ------------------------------------------------
+        // 3. Create stock ledger movement
+        // ------------------------------------------------
 
-  /*
-   * Update PO received quantities and status.
-   */
-  await prisma.$transaction(
-    async (tx) => {
-      for (const item of data.items) {
+        await recordMovementInTransaction(tx, {
+          variantId: item.variantId,
+          locationId: item.locationId,
+          type: "RECEIPT",
+          quantity: item.receivedQuantity,
+          referenceType: "RECEIPT",
+          referenceId: receipt.id,
+          idempotencyKey:
+            `receipt:${receipt.id}:item:${item.purchaseOrderItemId}`,
+          reason: "Purchase order receipt",
+          createdById: userId,
+        });
+
+        // ------------------------------------------------
+        // 4. Record damaged portion
+        // ------------------------------------------------
+
+        if (item.damagedQuantity > 0) {
+          await updateDamagedStock(tx, {
+            variantId: item.variantId,
+            locationId: item.locationId,
+            quantity: item.damagedQuantity,
+          });
+        }
+
+        // ------------------------------------------------
+        // 5. Update PO received quantity
+        // ------------------------------------------------
+
         await tx.purchaseOrderItem.update({
           where: {
             id: item.purchaseOrderItemId,
           },
-
           data: {
             receivedQuantity: {
-              increment:
-                item.receivedQuantity,
+              increment: item.receivedQuantity,
             },
           },
         });
       }
 
-      const updatedPO =
-        await tx.purchaseOrder.findUnique({
-          where: {
-            id: purchaseOrder.id,
-          },
+      // --------------------------------------------------
+      // 6. Reload PO items after updates
+      // --------------------------------------------------
 
-          include: {
-            items: true,
-          },
-        });
-
-      const allReceived =
-        updatedPO.items.every(
-          (item) =>
-            Number(item.receivedQuantity) >=
-            Number(item.orderedQuantity)
-        );
-
-      const someReceived =
-        updatedPO.items.some(
-          (item) =>
-            Number(item.receivedQuantity) > 0
-        );
-
-      let status =
-        updatedPO.status;
-
-      if (allReceived) {
-        status = "RECEIVED";
-      } else if (someReceived) {
-        status = "PARTIALLY_RECEIVED";
-      }
-
-      if (status !== updatedPO.status) {
-        await tx.purchaseOrder.update({
-          where: {
-            id: updatedPO.id,
-          },
-
-          data: {
-            status,
-          },
-        });
-      }
-    }
-  );
-
-  return prisma.receipt.findUnique({
-    where: {
-      id: receipt.id,
-    },
-
-    include: {
-      purchaseOrder: true,
-      warehouse: true,
-      items: {
-        include: {
-          variant: {
-            include: {
-              product: true,
-            },
-          },
-          location: true,
+      const updatedPO = await tx.purchaseOrder.findUnique({
+        where: {
+          id: purchaseOrderId,
         },
-      },
-    },
-  });
-}
-
-async function getReceipts(query) {
-  const page = Math.max(Number(query.page) || 1, 1);
-
-  const limit = Math.min(
-    Math.max(Number(query.limit) || 20, 1),
-    100
-  );
-
-  const where = {
-    ...(query.purchaseOrderId && {
-      purchaseOrderId:
-        query.purchaseOrderId,
-    }),
-
-    ...(query.warehouseId && {
-      warehouseId: query.warehouseId,
-    }),
-  };
-
-  const [items, total] =
-    await prisma.$transaction([
-      prisma.receipt.findMany({
-        where,
-
         include: {
-          purchaseOrder: true,
-          warehouse: true,
           items: true,
         },
+      });
 
-        orderBy: {
-          createdAt: "desc",
+      // --------------------------------------------------
+      // 7. Calculate PO status
+      // --------------------------------------------------
+
+      const allReceived = updatedPO.items.every(
+        (item) =>
+          Number(item.receivedQuantity) >=
+          Number(item.orderedQuantity)
+      );
+
+      const someReceived = updatedPO.items.some(
+        (item) => Number(item.receivedQuantity) > 0
+      );
+
+      let nextStatus = updatedPO.status;
+
+      if (allReceived) {
+        nextStatus = "RECEIVED";
+      } else if (someReceived) {
+        nextStatus = "PARTIALLY_RECEIVED";
+      }
+
+      if (nextStatus !== updatedPO.status) {
+        await tx.purchaseOrder.update({
+          where: {
+            id: purchaseOrderId,
+          },
+          data: {
+            status: nextStatus,
+          },
+        });
+      }
+
+      // --------------------------------------------------
+      // 8. Return complete receipt
+      // --------------------------------------------------
+
+      return tx.receipt.findUnique({
+        where: {
+          id: receipt.id,
         },
-
-        skip: (page - 1) * limit,
-
-        take: limit,
-      }),
-
-      prisma.receipt.count({
-        where,
-      }),
-    ]);
-
-  return {
-    items,
-
-    pagination: {
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(
-        total / limit
-      ),
-    },
-  };
-}
-
-async function getReceiptById(id) {
-  const receipt =
-    await prisma.receipt.findUnique({
-      where: {
-        id,
-      },
-
-      include: {
-        purchaseOrder: true,
-        warehouse: true,
-
-        items: {
-          include: {
-            variant: {
-              include: {
-                product: true,
-              },
+        include: {
+          items: true,
+          purchaseOrder: {
+            include: {
+              items: true,
             },
-
-            location: true,
           },
         },
-      },
-    });
-
-  if (!receipt) {
-    throw createError(
-      "Receipt not found",
-      404
-    );
-  }
-
-  return receipt;
+      });
+    },
+    {
+      isolationLevel: "Serializable",
+    }
+  );
 }
-
 module.exports = {
   createReceipt,
-  getReceipts,
-  getReceiptById,
 };
