@@ -32,7 +32,7 @@ async function resetPassword(email, otp, password) {
   return { message: "Password reset successfully" };
 }
 
-async function signup(name, email, password) {
+async function signup(name, email, password, role = "WAREHOUSE_STAFF") {
   const normalizedEmail = email.toLowerCase();
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
@@ -44,7 +44,7 @@ async function signup(name, email, password) {
 
   const passwordHash = await bcrypt.hash(password, 10);
   return prisma.user.create({
-    data: { name, email: normalizedEmail, passwordHash, role: "WAREHOUSE_STAFF" },
+    data: { name, email: normalizedEmail, passwordHash, role: role || "WAREHOUSE_STAFF" },
     select: { id: true, name: true, email: true, role: true },
   });
 }

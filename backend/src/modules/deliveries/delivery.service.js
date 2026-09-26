@@ -410,10 +410,71 @@ async function fulfillDelivery(
   );
 }
 
+async function recommendWarehouse(variantId, quantity = 1) {
+  const reqQty = Number(quantity) || 1;
+  const inventoryRecords = await prisma.inventory.findMany({
+    where: { variantId },
+    include: {
+      warehouse: true,
+      location: true,
+      variant: { include: { product: true } },
+    },
+  });
+
+  const warehouseMap = new Map();
+  for (const inv of inventoryRecords) {
+    const wId = inv.warehouseId;
+    const available = Math.max(0, Number(inv.onHand) - Number(inv.reserved) - Number(inv.damaged));
+    if (!warehouseMap.has(wId)) {
+      warehouseMap.set(wId, {
+        warehouseId: wId,
+        warehouseName: inv.warehouse.name,
+        city: inv.warehouse.city,
+        totalOnHand: 0,
+        totalReserved: 0,
+        totalDamaged: 0,
+        totalAvailable: 0,
+        locations: [],
+      });
+    }
+    const entry = warehouseMap.get(wId);
+    entry.totalOnHand += Number(inv.onHand);
+    entry.totalReserved += Number(inv.reserved);
+    entry.totalDamaged += Number(inv.damaged);
+    entry.totalAvailable += available;
+    entry.locations.push({
+      locationId: inv.locationId,
+      locationCode: inv.location.code,
+      available,
+      onHand: inv.onHand,
+    });
+  }
+
+  const options = Array.from(warehouseMap.values()).map((wh) => ({
+    ...wh,
+    canFulfill: wh.totalAvailable >= reqQty,
+    shortage: Math.max(0, reqQty - wh.totalAvailable),
+  }));
+
+  options.sort((a, b) => {
+    if (a.canFulfill !== b.canFulfill) return a.canFulfill ? -1 : 1;
+    return b.totalAvailable - a.totalAvailable;
+  });
+
+  const recommended = options.find((o) => o.canFulfill) || options[0] || null;
+
+  return {
+    requiredQuantity: reqQty,
+    recommendedWarehouse: recommended,
+    allWarehouses: options,
+  };
+}
+
 module.exports = {
   createDelivery,
   getDeliveryById,
   getDeliveries,
   updateDeliveryStatus,
   fulfillDelivery,
+  recommendWarehouse,
 };

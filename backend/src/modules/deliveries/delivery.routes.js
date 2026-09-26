@@ -11,6 +11,8 @@ router.use(authenticate);
 
 router.get("/", controller.getDeliveries);
 
+router.get("/recommend-warehouse", controller.recommendWarehouse);
+
 router.get("/:id", controller.getDeliveryById);
 
 router.post(

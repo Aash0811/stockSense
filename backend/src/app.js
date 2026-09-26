@@ -29,7 +29,12 @@ const auditRoutes = require("./modules/audit/audit.routes");
 
 app.use(
   cors({
-    origin: clientUrl,
+    origin: (origin, callback) => {
+      if (!origin || origin.startsWith("http://localhost:") || origin === clientUrl) {
+        return callback(null, true);
+      }
+      callback(null, true);
+    },
     credentials: true,
   })
 );

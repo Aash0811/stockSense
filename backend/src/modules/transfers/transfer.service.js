@@ -111,16 +111,44 @@ async function receiveTransfer(id, requestedItems, userId) {
 }
 
 async function getTransfer(id) {
-	const transfer = await prisma.transfer.findUnique({ where: { id }, include: { items: true, sourceWarehouse: true, destinationWarehouse: true } });
+	const transfer = await prisma.transfer.findUnique({
+		where: { id },
+		include: {
+			sourceWarehouse: true,
+			destinationWarehouse: true,
+			items: {
+				include: {
+					variant: { include: { product: true } },
+					sourceLocation: true,
+					destinationLocation: true,
+				},
+			},
+		},
+	});
 	if (!transfer) throw error("Transfer not found", 404, "TRANSFER_NOT_FOUND");
 	return transfer;
 }
 
 async function getTransfers(query = {}) {
 	const page = Math.max(Number(query.page) || 1, 1);
-	const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
+	const limit = Math.min(Math.max(Number(query.limit) || 50, 1), 100);
 	const [items, total] = await prisma.$transaction([
-		prisma.transfer.findMany({ skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" }, include: { items: true, sourceWarehouse: true, destinationWarehouse: true } }),
+		prisma.transfer.findMany({
+			skip: (page - 1) * limit,
+			take: limit,
+			orderBy: { createdAt: "desc" },
+			include: {
+				sourceWarehouse: true,
+				destinationWarehouse: true,
+				items: {
+					include: {
+						variant: { include: { product: true } },
+						sourceLocation: true,
+						destinationLocation: true,
+					},
+				},
+			},
+		}),
 		prisma.transfer.count(),
 	]);
 	return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };

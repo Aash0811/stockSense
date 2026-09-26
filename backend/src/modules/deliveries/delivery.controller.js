@@ -73,10 +73,23 @@ const fulfillDelivery = asyncHandler(async (req, res) => {
   });
 });
 
+const recommendWarehouse = asyncHandler(async (req, res) => {
+  const { variantId, quantity } = req.query;
+  if (!variantId) {
+    return res.status(400).json({ success: false, error: { message: "variantId is required" } });
+  }
+  const result = await deliveryService.recommendWarehouse(variantId, quantity);
+  res.json({
+    success: true,
+    data: result,
+  });
+});
+
 module.exports = {
   createDelivery,
   getDeliveries,
   getDeliveryById,
   updateDeliveryStatus,
   fulfillDelivery,
+  recommendWarehouse,
 };

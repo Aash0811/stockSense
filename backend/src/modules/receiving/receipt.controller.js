@@ -53,8 +53,17 @@ const getReceipt = asyncHandler(
   }
 );
 
+const validateReceipt = asyncHandler(
+  async (req, res) => {
+    const { id } = receiptIdSchema.parse(req.params);
+    const receipt = await service.validateReceipt(id, req.user.userId);
+    return successResponse(res, receipt, "Receipt validated successfully");
+  }
+);
+
 module.exports = {
   createReceipt,
+  validateReceipt,
   getReceipts,
   getReceipt,
 };

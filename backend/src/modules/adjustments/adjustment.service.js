@@ -55,18 +55,41 @@ async function createAdjustment(data, userId) {
 }
 
 async function getAdjustment(id) {
-	const adjustment = await prisma.stockAdjustment.findUnique({ where: { id }, include: { variant: true, location: true, createdBy: true } });
+	const adjustment = await prisma.stockAdjustment.findUnique({
+		where: { id },
+		include: {
+			variant: { include: { product: true } },
+			location: { include: { warehouse: true } },
+			createdBy: { select: { id: true, name: true, email: true, role: true } },
+		},
+	});
 	if (!adjustment) throw createError("Adjustment not found", 404, "ADJUSTMENT_NOT_FOUND");
-	return adjustment;
+	const isSuspicious = Math.abs(adjustment.difference) >= 50 || (adjustment.systemQuantity > 0 && (Math.abs(adjustment.difference) / adjustment.systemQuantity) >= 0.3);
+	return { ...adjustment, isSuspicious };
 }
 
 async function getAdjustments(query = {}) {
 	const page = Math.max(Number(query.page) || 1, 1);
-	const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100);
-	const [items, total] = await prisma.$transaction([
-		prisma.stockAdjustment.findMany({ skip: (page - 1) * limit, take: limit, orderBy: { createdAt: "desc" }, include: { variant: true, location: true } }),
+	const limit = Math.min(Math.max(Number(query.limit) || 50, 1), 100);
+	const [rawItems, total] = await prisma.$transaction([
+		prisma.stockAdjustment.findMany({
+			skip: (page - 1) * limit,
+			take: limit,
+			orderBy: { createdAt: "desc" },
+			include: {
+				variant: { include: { product: true } },
+				location: { include: { warehouse: true } },
+				createdBy: { select: { id: true, name: true, email: true, role: true } },
+			},
+		}),
 		prisma.stockAdjustment.count(),
 	]);
+
+	const items = rawItems.map((adj) => {
+		const isSuspicious = Math.abs(adj.difference) >= 50 || (adj.systemQuantity > 0 && (Math.abs(adj.difference) / adj.systemQuantity) >= 0.3);
+		return { ...adj, isSuspicious };
+	});
+
 	return { items, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 }
 

@@ -2,8 +2,8 @@ const authService = require("./auth.service");
 const { successResponse } = require("../../utils/apiResponse");
 
 async function signup(req, res) {
-  const { name, email, password } = req.validated.body;
-  const user = await authService.signup(name, email, password);
+  const { name, email, password, role } = req.validated.body;
+  const user = await authService.signup(name, email, password, role);
   return successResponse(res, user, "Account created successfully", 201);
 }
 

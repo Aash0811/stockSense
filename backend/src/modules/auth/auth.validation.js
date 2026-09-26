@@ -14,6 +14,7 @@ const signupSchema = z.object({
 		name: z.string().trim().min(2).max(100),
 		email: z.string().trim().email(),
 		password: z.string().min(8).max(100),
+		role: z.enum(["ADMIN", "INVENTORY_MANAGER", "WAREHOUSE_STAFF", "AUDITOR"]).optional().default("WAREHOUSE_STAFF"),
 	}),
 	params: z.object({}),
 	query: z.object({}),

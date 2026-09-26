@@ -24,4 +24,14 @@ router.post(
   controller.createReceipt
 );
 
+router.post(
+  "/:id/validate",
+  authorize(
+    "ADMIN",
+    "INVENTORY_MANAGER",
+    "WAREHOUSE_STAFF"
+  ),
+  controller.validateReceipt
+);
+
 module.exports = router;
