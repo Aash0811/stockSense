@@ -11,6 +11,14 @@ const {
 
 const app = express();
 const authRoutes = require("./modules/auth/auth.routes");
+const categoryRoutes = require("./modules/categories/category.routes");
+const productRoutes = require("./modules/products/product.routes");
+const warehouseRoutes = require("./modules/warehouses/warehouse.routes");
+const locationRoutes = require("./modules/locations/location.routes");
+const inventoryRoutes = require("./modules/inventory/inventory.routes");
+const purchasingRoutes = require("./modules/purchasing/purchasing.routes");
+
+const receivingRoutes = require("./modules/receiving/receiving.routes");
 // ============================================================
 // GLOBAL MIDDLEWARE
 // ============================================================
@@ -56,6 +64,14 @@ app.get("/api", (req, res) => {
   });
 });
 app.use("/api/auth", authRoutes);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/warehouses", warehouseRoutes);
+app.use("/api/locations", locationRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/purchase-orders",purchasingRoutes);
+app.use("/api/receipts",receivingRoutes);
+
 // ============================================================
 // ERROR HANDLING
 // ============================================================

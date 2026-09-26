@@ -1,37 +1,17 @@
-const jwt = require("jsonwebtoken");
-
-const { jwtSecret } = require("../config/env");
-
-function authenticate(req, res, next) {
-  const authorization = req.headers.authorization;
-
-  if (!authorization || !authorization.startsWith("Bearer ")) {
-    return res.status(401).json({
-      success: false,
-      error: {
-        code: "UNAUTHORIZED",
-        message: "Authentication token is required",
-      },
-    });
-  }
-
-  const token = authorization.split(" ")[1];
-
-  try {
-    const decoded = jwt.verify(token, jwtSecret);
-
-    req.user = decoded;
+function authorize(...allowedRoles) {
+  return function roleAuthorization(req, res, next) {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "You do not have permission to perform this action",
+        },
+      });
+    }
 
     next();
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      error: {
-        code: "INVALID_TOKEN",
-        message: "Invalid or expired authentication token",
-      },
-    });
-  }
+  };
 }
 
-module.exports = authenticate;
+module.exports = authorize;
